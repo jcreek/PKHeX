@@ -22,7 +22,7 @@ public sealed class PublishedAppTests(PublishedAppFixture app)
     /// <summary>Extensions of the precompressed copies the publish places next to an uncompressed asset.</summary>
     private static readonly HashSet<string> PrecompressedExtensions = [".br", ".gz"];
 
-    [Theory]
+    [TierTheory(TestCategory.E2E)]
     [MemberData(nameof(PublishedAppFixture.BrowserCases), MemberType = typeof(PublishedAppFixture))]
     public async Task BootsWithDeploymentHeadersAndNoPersistence(string engine, string prefix)
     {
@@ -41,7 +41,7 @@ public sealed class PublishedAppTests(PublishedAppFixture app)
         Assert.True(session.PageErrors == 0, "Browser runtime errors occurred during boot.");
     }
 
-    [Fact]
+    [TierFact(TestCategory.E2E)]
     public void PublishesLicenseAndNotices()
     {
         var root = SaveFixtures.RepositoryRoot;
@@ -88,7 +88,7 @@ public sealed class PublishedAppTests(PublishedAppFixture app)
         Assert.Empty(rows.Where(r => r.Section == NoticesInventory.Section.Trimmed && withFiles.Contains(r.Id)).Select(r => r.Id));
     }
 
-    [Fact]
+    [TierFact(TestCategory.E2E)]
     public void PublishesOnlyStaticDeployableFiles()
     {
         var files = Directory.EnumerateFiles(app.Root, "*", SearchOption.AllDirectories).ToList();
@@ -133,7 +133,7 @@ public sealed class PublishedAppTests(PublishedAppFixture app)
         };
     }
 
-    [Theory]
+    [TierTheory(TestCategory.E2E)]
     [MemberData(nameof(PublishedAppFixture.BrowserCases), MemberType = typeof(PublishedAppFixture))]
     public async Task PublishedFailuresDraftsAndKnownLegality(string engine, string prefix)
     {

@@ -137,13 +137,19 @@ jobs:
               if: ${{ !cancelled() && steps.publish.outcome == 'success' }}
               run: pwsh Tests/PKHeX.Web.Tests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium firefox webkit
 
+            # E2E is opt-in: without PKHEX_WEB_TEST_TIERS its tests are skipped, so the next step checks that every one ran.
             - name: Web E2E tests
               if: ${{ !cancelled() && steps.playwright.outcome == 'success' }}
               env:
+                  PKHEX_WEB_TEST_TIERS: E2E
                   PKHEX_WEB_PUBLISHED: ${{ env.PUBLISH_DIR }}/wwwroot
               run: >-
                   dotnet test Tests/PKHeX.Web.Tests/PKHeX.Web.Tests.csproj -c Release --no-build --filter Category=E2E
                   --logger "trx;LogFileName=web-e2e.trx" --results-directory "$RESULTS_DIR"
+
+            - name: Check every E2E test ran
+              if: ${{ !cancelled() && steps.playwright.outcome == 'success' }}
+              run: PKHeX.Web/tools/trx-all-executed.sh "$RESULTS_DIR/web-e2e.trx"
 
             - name: Upload test results and reports
               if: ${{ always() }}

@@ -28,7 +28,7 @@ Each numbered chunk below is **one commit**. Every commit must build, and its te
 
 ## Human-only gates (not commits)
 
-- **G-A Maintainer interest:** before the Web foundation PR goes upstream, ask through the CONTRIBUTING channels. Present the static/client-only goal, the proof results, asset/crypto implications and maintenance ownership. Refactor PRs are useful on their own and do not wait on this. Also raise: `dotnet.native.js`/`.wasm` are Emscripten output (MIT/NCSA), and the runtime pack's upstream notices do not mention Emscripten; ask whether the Web notices should add it or whether the .NET notices are considered sufficient.
+- **G-A Maintainer interest:** before the Web foundation PR goes upstream, ask through the CONTRIBUTING channels. Present the static/client-only goal, the proof results, asset/crypto implications and maintenance ownership. Refactor PRs are useful on their own and do not wait on this. Also raise: `dotnet.native.js`/`.wasm` are Emscripten output (MIT/NCSA), and the runtime pack's upstream notices do not mention Emscripten; ask whether the Web notices should add it or whether the .NET notices are considered sufficient. Also ask where Web CI should live. Upstream's CI is an Azure Pipelines classic pipeline (`project-pokemon/PKHeX`, definition 1), defined in the Azure DevOps UI with no file in the repository, so only maintainers can change it. The options are to accept `.github/workflows/web.yml` (GitHub Actions is already enabled upstream: `submit-nuget` runs there), or to add equivalent steps to the Azure pipeline, for which we supply the step list. Mention that its VsTest step (`**\$(BuildConfiguration)\*test*.dll`) matches no assembly (`No test sources found`), because the DLLs sit under `bin\Release\net10.0\`, so no test has run upstream in CI; `**\bin\Release\**\*Tests.dll` would fix it.
 - **G-B Sprite/asset policy:** maintainers confirm that redistributing PokeSprite images on a public static host is acceptable. Until then, M5 ships text placeholders only.
 - **G-C Physical devices:** real Safari (macOS), iPadOS Safari and Android Chrome runs for M21.
 - **G-D Real-save fixtures:** the owner supplies XY/ORAS saves via env vars for local runs. They are never committed and never used in CI.
@@ -121,12 +121,12 @@ Branch `web/foundation` from `web/main`.
 
 **F2 Solution integration.** Add `PKHeX.Web` and `PKHeX.Web.Tests` to `PKHeX.slnx`, and remove `PKHeX.sln` so that `.slnx` is the only solution. Confirm they inherit from `Directory.Build.props` (C# 14, nullable) and fix any new nullable warnings. Pin `Microsoft.AspNetCore.Components.WebAssembly` to 10.0.12. Do not add a repo-wide `global.json`.
 
-**F2 status:** code complete on `web/f2-solution-integration`. Both projects inherit C# 14 and nullable, and the Release build of `PKHeX.slnx` has 0 warnings. The Web projects now treat nullable warnings as errors: PKForge sets `TreatWarningsAsErrors` repo-wide, but here it covers nullable only and stays off Core/WinForms, and trim warnings are left to the F6 baseline. Adding `PKHeX.Web.Tests` to the solution made `dotnet test PKHeX.slnx` run the browser and real-save tests, which fail without their environment, so the tier tagging from F3 was pulled forward: every Web test carries `[Trait("Category", Unit|E2E|RealSave)]` (`TestCategory.cs`), and when no `--filter` is given `PKHeX.Web.Tests.runsettings` limits the run to `Unit`. It is applied only without a filter, because VSTest ANDs the two. A `TestCategoryTests` guard (itself Unit) fails if any test has no tier or more than one, so an untagged test cannot silently drop out of every run. The Unit-only default applies only when neither `--filter` nor `--settings` is given; a filter on the solution reaches every project, so exclusion filters such as `FullyQualifiedName!~X` pull in E2E/RealSave, and CI (F6) must always pass explicit `Category` filters. Removing `PKHeX.sln` goes beyond "no solution churn" (`PKHeX.Web.md` §upstream): the foundation PR text must call it out as a separate, revertible decision for maintainers (current Visual Studio and Rider open `.slnx`), and upstream edits to `PKHeX.sln` will conflict as modify/delete when rebasing.
+**F2 status:** code complete on `web/f2-solution-integration`. Both projects inherit C# 14 and nullable, and the Release build of `PKHeX.slnx` has 0 warnings. The Web projects now treat nullable warnings as errors: PKForge sets `TreatWarningsAsErrors` repo-wide, but here it covers nullable only and stays off Core/WinForms, and trim warnings are left to the F6 baseline. Adding `PKHeX.Web.Tests` to the solution made `dotnet test PKHeX.slnx` run the browser and real-save tests, which fail without their environment, so the tier tagging from F3 was pulled forward: every Web test carries `[Trait("Category", Unit|E2E|RealSave)]` (`TestCategory.cs`), and when no `--filter` is given `PKHeX.Web.Tests.runsettings` limits the run to `Unit`. It is applied only without a filter, because VSTest ANDs the two. A `TestCategoryTests` guard (itself Unit) fails if any test has no tier or more than one, so an untagged test cannot silently drop out of every run. The Unit-only default applies only when neither `--filter` nor `--settings` is given; a filter on the solution reaches every project, so exclusion filters such as `FullyQualifiedName!~X` pull in E2E/RealSave, and CI (F6) must always pass explicit `Category` filters. Removing `PKHeX.sln` goes beyond "no solution churn" (`PKHeX.Web.md` §upstream): the foundation PR text must call it out as a separate, revertible decision for maintainers (current Visual Studio and Rider open `.slnx`), and upstream edits to `PKHeX.sln` will conflict as modify/delete when rebasing. Upstream's Azure pipeline builds `PKHeX.slnx` on a Windows agent (`nuget.exe` restore, then Visual Studio MSBuild with `/p:Version=$(GitVersion.SemVer)`) on every push and PR, so after the foundation merges it also builds `PKHeX.Web` and `PKHeX.Web.Tests` with a toolchain we have not tested (`dotnet pack` skips them: `IsPackable` is false). A failure there breaks upstream's build, so F7 must prove it first.
 
 **F3 Split test tiers.** Tagging and the Unit-only default landed in F2; F3 adds the fixture and tier-specific checks below.
 - `Category=Unit`: session and naming tests with synthetic Core blank saves plus a test-only BEEF footer, as the proof does.
 - `Category=E2E`: Playwright against the published output with synthetic fixtures.
-- `Category=RealSave`: env-var driven. When this category is selected and a variable is missing, the test fails, not skips.
+- `Category=RealSave`: env-var driven. When this category is selected and a variable is missing, the test fails, not skips. (Since F6 the tier must also be opted in with `PKHEX_WEB_TEST_TIERS`; unless it is, it is skipped. See the F6 status.)
 - CI runs only Unit and E2E.
 - Move `StaticHost` + privacy assertions into a reusable `PublishedAppFixture`. It covers request interception, storage emptiness, root and `/PKHeX/`, and deployment-like headers (MIME, CSP header, `nosniff`).
 
@@ -216,7 +216,16 @@ Add `Services/FileNaming`, which sanitises separators and control characters, ca
   - Fixed: the unenforced SDK pin; missing `pipefail`; the size report's SIGPIPE; ordinal churn in the baseline; later results hidden by an early failure and no `wwwroot` upload on E2E failure; duplicate push+PR runs and cancelled merge-target runs; an allowlist that ignored folders; `--report` without a path; CRLF logs; stray `DOTNET_SKIP_FIRST_TIME_EXPERIENCE`; field placement in the test class; 2-space YAML against `.editorconfig`.
   - Confirmed fine: YAML anchors in workflows, the pinned SHAs against their tags, `pwsh` and passwordless sudo on the runner, `--no-build` E2E after the publish rebuilds, provenance on the PR merge ref, Linux case sensitivity of the notices, and no private data in the uploads.
   - Not changed: the exclusion filter names the old test, so after the upstream fix (which renames it) it silently matches nothing; the workflow comment says to drop it.
-- **Tests.** Running the workflow's steps locally in order: Core 798 passed plus 1 existing skip, with the exclusion; Unit 87; E2E 26; RealSave 14. The `PKHeX.slnx` Release build has 0 warnings.
+- **Opt-in browser tiers.** F2's Unit-only default comes from `RunSettingsFilePath`, which only `dotnet test` and Visual Studio read. `vstest.console` on the built assembly, which is what Azure's VsTest task runs, ignores it. `dotnet vstest PKHeX.Web.Tests.dll` reproduced the result: 40 E2E/RealSave failures. Upstream's pattern matches nothing today, but fixing it (see G-A) would turn its build red. So E2E and RealSave are now also opt-in:
+  - They run only when named in `PKHEX_WEB_TEST_TIERS` (e.g. `E2E,RealSave`; case-insensitive), and are otherwise skipped with a reason, through `TierFactAttribute`/`TierTheoryAttribute`. `PublishedAppFixture` is unchanged. An unfiltered run still creates it and its setup throws, but xUnit 2.9.3 does not report a fixture failure against skipped tests (the review confirmed this with a marker file).
+  - The same `dotnet vstest` run now gives 98 passed, 8 skipped (one per opt-in test method), 0 failed.
+  - An opted-in tier with missing inputs still fails, not skips (F3). A filter without the opt-in does skip everything and reports success; that is the trade-off for being safe under runners that ignore the filter. CI closes the gap with `PKHeX.Web/tools/trx-all-executed.sh`, which fails the E2E step's results unless every counted test was executed.
+  - Guards (Unit):
+    - `OptInTiersUseTheMatchingTierAttribute` requires the tier attribute to match the class's category. Unit tests must use exactly `[Fact]`/`[Theory]`, and any other test attribute is rejected, because a custom subclass could skip unnoticed.
+    - `NoTestIsSkipped` became `NoTestIsSkippedExceptByTheOptIn`. It still reads the run-time `Skip` of every test and data attribute, so skips set in a constructor are caught. The only skip it allows is a tier attribute's own opt-in reason.
+    - `IsOptedIn` parsing is tested as a pure function, so no test mutates the process environment.
+  - Known limit (unreproduced; the review put its confidence at about 30%): a runner that discovers without the opt-in and executes with it in a separate process, such as some IDE flows, would run a not-enumerated theory with no arguments. `dotnet test`, `vstest.console` and CI discover and run in one process.
+- **Tests.** Running the workflow's steps locally in order: Core 798 passed plus 1 existing skip, with the exclusion; Unit 98 (87, less the renamed guard, plus 12 new cases: the tier-attribute guard, the renamed skip guard and 10 opt-in parsing rows); E2E 26 opted in, and the TRX check passes on them; RealSave 14 opted in. The `PKHeX.slnx` Release build has 0 warnings.
 - **Compared with PKForge:** its `build.yml` also runs on `ubuntu-latest` with restore → `--no-restore` test. We are deliberately stricter:
   - it floats `10.0.x`; we pin 10.0.401, which the notices tests need
   - it pins actions by tag; we pin to SHAs
@@ -225,7 +234,29 @@ Add `Services/FileNaming`, which sanitises separators and control characters, ca
   - it has no publish, artifact or trim checks
   Its signing, release and APK steps are out of Web scope; a deploy job is M20. Nothing to adopt.
 
-**F7 Windows regression job.** Add a `windows-latest` job (same workflow or `desktop.yml`) that builds `PKHeX.slnx` Release and runs `PKHeX.Core.Tests`. This guards Phase 1 and the solution edits.
+**F7 Azure-parity Windows job.** Upstream's Azure pipeline already builds `PKHeX.slnx` Release on Windows (see G-A and F2), so a plain Windows build would duplicate it. Instead, add a `windows-latest` job to `web.yml` that reproduces the Azure steps we cannot run ourselves:
+- `nuget.exe` restore of `PKHeX.slnx`
+- a Visual Studio MSBuild build of `PKHeX.slnx` in Release with `/p:Version=<semver>`
+- `vstest.console.exe` on `**\bin\Release\**\*Tests.dll`, which is the corrected pattern, without `PKHEX_WEB_TEST_TIERS`
+
+It must show:
+- the Web projects build under that toolchain
+- Core tests pass there
+- Web Unit passes, and E2E/RealSave are skipped rather than failing (the F6 opt-in)
+
+Match the agent as closely as possible. Build 9738's logs show:
+- image `windows-2025` (pin that, not `windows-latest`)
+- Visual Studio 2022 17.14 MSBuild, x86 (`msbuildArchitecture: x86`)
+- `BuildPlatform` "Any CPU"
+- GitVersion with `/updateassemblyinfo`
+- the agent's floating SDK, 10.0.111 (runtime 10.0.11) at the time
+- `NETSDK1233` ("Targeting .NET 10.0 or higher in Visual Studio 2022 17.14 is not supported") 18 times, so the Web projects would be built with an unsupported toolchain
+
+Known risk: two Unit tests depend on the runtime pack that the SDK brings, and would fail on that agent (inferred from the code, not yet run on Windows):
+- `ThirdPartyNoticesTests.ListsEveryRestoredPackageOnceWithItsVersion` (version mismatch)
+- `ThirdPartyNoticesTests.PublishedPackagesNameTheNoticesThatCoverThem` (the 10.0.12 runtime pack directory is not restored)
+
+Decide in F7 whether those checks move to an opt-in tier, read the versions from the SDK, or are left to the Linux job. This guards Phase 1, the solution edits and the foundation PR's effect on upstream's build.
 
 **F8 Performance baseline (WEB-PERF-001).** A script (`PKHeX.Web/tools/measure.*` or a test) records cold and warm boot under Playwright network throttling (20 Mbps/50 ms) plus artifact sizes, and uploads them as a CI artifact. There is no pass/fail threshold yet.
 
@@ -286,8 +317,8 @@ MVP exit = every "Must / MVP" story in `PKHeX.Web.md` §Prioritised implementati
 
 - `dotnet build PKHeX.Web/PKHeX.Web.csproj -c Release` and `dotnet test Tests/PKHeX.Core.Tests` (Core-touching chunks).
 - `dotnet test Tests/PKHeX.Web.Tests --filter Category=Unit`.
-- `dotnet publish PKHeX.Web/PKHeX.Web.csproj -c Release -o $OUT`, then `--filter Category=E2E` with `PKHEX_WEB_PUBLISHED=$OUT/wwwroot`.
-- Before Phase 3 PRs and after M9/M15/M19: `--filter Category=RealSave` with the private XY/ORAS env vars (proof README procedure).
+- `dotnet publish PKHeX.Web/PKHeX.Web.csproj -c Release -o $OUT`, then `--filter Category=E2E` with `PKHEX_WEB_TEST_TIERS=E2E` and `PKHEX_WEB_PUBLISHED=$OUT/wwwroot`.
+- Before Phase 3 PRs and after M9/M15/M19: `--filter Category=RealSave` with `PKHEX_WEB_TEST_TIERS=RealSave`, `PKHEX_WEB_PUBLISHED` and the private XY/ORAS env vars (proof README procedure).
 - Trim-warning baseline unchanged, or the diff explained in the commit.
 - PKForge comparison done and recorded (see "Reference project").
 - Phase 1 also needs a Windows WinForms build (F7 job or local) and the R3 Windows checklist (gate G-E).
