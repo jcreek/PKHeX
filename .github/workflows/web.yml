@@ -164,16 +164,19 @@ jobs:
                       ${{ env.REPORTS_DIR }}
                   if-no-files-found: ignore
 
-    # Repeats the steps of upstream's Azure pipeline (a classic pipeline, so there is no file to reuse), as recorded by its build 9738:
-    # the windows-2025 image, GitVersion 5.x through GitTools v3.2.1 with /updateassemblyinfo, the image's nuget.exe restore of PKHeX.slnx,
+    # Repeats the steps of upstream's Azure pipeline (a classic pipeline, so there is no file to reuse), as recorded by its builds 9738 and 9754:
+    # GitVersion 5.x through GitTools v3.2.1 with /updateassemblyinfo, a nuget.exe (>=7.0.0) restore of PKHeX.slnx,
     # and a Release|Any CPU build with x86 Visual Studio MSBuild and /p:Version from GitVersion. There is deliberately no setup-dotnet and no SDK pin:
-    # Visual Studio MSBuild resolves the newest SDK its version supports from the image (10.0.111 on VS 17.14, while the dotnet CLI picks 10.0.400),
+    # Visual Studio MSBuild resolves the newest SDK its version supports from the image (10.0.111, later 10.0.112, on VS 17.14, while the dotnet CLI picks the newest installed),
     # and that floating SDK is what upstream builds with.
     # Azure's later steps (artifact publishing and a dotnet CLI pack of PKHeX.Core) are left out: they do not build the Web projects.
     # Azure's VsTest pattern, **\Release\*test*.dll, matches no assembly, so no test runs there. This job runs vstest.console on the corrected
     # pattern, **\bin\Release\**\*Tests.dll, without PKHEX_WEB_TEST_TIERS, and checks that Core and Web Unit pass and only the opt-in tiers skip.
+    # Azure's windows-2025 agent still has Visual Studio 2022 17.14, but GitHub's windows-2025 label now has Visual Studio 2026, whose MSBuild
+    # resolves a newer SDK and has no VS 17 vstest.console. windows-2022 has the same Visual Studio 2022 17.14 and 10.0.1xx SDK as Azure's agent;
+    # only the Windows Server version differs, and nothing in the build is known to depend on it.
     azure-parity:
-        runs-on: windows-2025
+        runs-on: windows-2022
         timeout-minutes: 45
         env:
             RESULTS_DIR: ${{ github.workspace }}\artifacts\azure-parity
@@ -281,7 +284,7 @@ jobs:
                   $vstest = & $vswhere -latest -products * -version '[17.0,18.0)' -find '**\TestPlatform\vstest.console.exe' | Select-Object -First 1
                   $tests = @(Get-ChildItem -Recurse -File -Filter '*Tests.dll' | Where-Object { $_.FullName -like '*\bin\Release\*' -and $_.FullName -notlike '*\obj\*' } | ForEach-Object FullName)
                   if (-not $vstest) {
-                      Write-Host '::error::No vstest.console.exe in a Visual Studio [17.0,18.0) install; Azure'"'"'s VsTest task would not find one either.'
+                      Write-Host "::error::No vstest.console.exe in a Visual Studio [17.0,18.0) install; Azure's VsTest task would not find one either."
                       exit 1
                   }
                   $tests | ForEach-Object { Write-Host "Test assembly: $_" }
