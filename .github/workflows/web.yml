@@ -1,6 +1,7 @@
 # Builds, tests and publishes PKHeX.Web.
 # The web job runs on Linux with a pinned SDK: Core tests, the Web Unit and E2E tiers, and the Perf boot baseline; the RealSave tier needs private saves and never runs in CI.
 # The trimmed publish is checked against the trim-warning baseline and uploaded with the test results and reports.
+# A second publish with the sprite atlas (-p:PKHeXWebSprites=true) is tested but never uploaded: sprite redistribution awaits a maintainer decision.
 # The azure-parity job repeats upstream's Azure pipeline on Windows, so a change that would break that build fails here first.
 name: web
 
@@ -10,6 +11,7 @@ on:
             - "PKHeX.Core/**"
             - "PKHeX.Drawing*/**"
             - "PKHeX.Web/**"
+            - "PKHeX.Web.SpriteAtlas/**"
             - "PKHeX.WinForms/**"
             - "Tests/PKHeX.Core.Tests/**"
             - "Tests/PKHeX.Web.Tests/**"
@@ -51,6 +53,7 @@ jobs:
             # The runtime pack and ILLink versions come from the SDK, and THIRD-PARTY-NOTICES.md lists them exactly.
             DOTNET_SDK_VERSION: "10.0.401"
             PUBLISH_DIR: ${{ github.workspace }}/artifacts/publish
+            SPRITES_PUBLISH_DIR: ${{ github.workspace }}/artifacts/publish-sprites
             RESULTS_DIR: ${{ github.workspace }}/artifacts/test-results
             REPORTS_DIR: ${{ github.workspace }}/artifacts/reports
         steps:
@@ -126,6 +129,19 @@ jobs:
                   path: ${{ env.PUBLISH_DIR }}/wwwroot
                   if-no-files-found: error
 
+            # Runs after the steps above, which inspect the default build: both publishes share PKHeX.Web's obj directory.
+            # Its restore adds the generator project to the Web restore graph; it brings no packages, so the notices checks are unaffected.
+            - name: Publish with sprites
+              id: publish-sprites
+              if: ${{ !cancelled() && steps.restore.outcome == 'success' }}
+              run: |
+                  dotnet publish PKHeX.Web/PKHeX.Web.csproj -c Release -p:PKHeXWebSprites=true -o "$SPRITES_PUBLISH_DIR"
+                  {
+                      echo "## With sprites (tested, not uploaded)"
+                      echo
+                      PKHeX.Web/tools/size-report.sh "$SPRITES_PUBLISH_DIR/wwwroot" 5 | tail -n +2
+                  } | tee "$REPORTS_DIR/size-sprites.md" >> "$GITHUB_STEP_SUMMARY"
+
             - name: Cache Playwright browsers
               if: ${{ !cancelled() && steps.publish.outcome == 'success' }}
               uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -146,6 +162,7 @@ jobs:
               env:
                   PKHEX_WEB_TEST_TIERS: E2E
                   PKHEX_WEB_PUBLISHED: ${{ env.PUBLISH_DIR }}/wwwroot
+                  PKHEX_WEB_PUBLISHED_SPRITES: ${{ env.SPRITES_PUBLISH_DIR }}/wwwroot
               run: >-
                   dotnet test Tests/PKHeX.Web.Tests/PKHeX.Web.Tests.csproj -c Release --no-build --filter Category=E2E
                   --logger "trx;LogFileName=web-e2e.trx" --results-directory "$RESULTS_DIR"

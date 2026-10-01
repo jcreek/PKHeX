@@ -32,6 +32,9 @@ internal sealed partial class StaticHost : IDisposable
 
     public string Url { get; }
 
+    /// <summary>The <c>wwwroot</c> being served, as a full path.</summary>
+    public string Root => root;
+
     /// <summary>Starts serving <paramref name="root"/> on a free loopback port.</summary>
     /// <param name="root">The published <c>wwwroot</c>.</param>
     /// <param name="deploymentCaching">
@@ -184,7 +187,7 @@ internal sealed partial class StaticHost : IDisposable
             response.ContentType = Path.GetExtension(file) switch
             {
                 ".html" => "text/html", ".js" => "text/javascript", ".css" => "text/css",
-                ".json" => "application/json", ".wasm" => "application/wasm",
+                ".json" => "application/json", ".wasm" => "application/wasm", ".png" => "image/png",
                 // The license and notices linked from the About panel; the types Cloudflare Pages serves them with.
                 ".md" => "text/markdown; charset=utf-8", ".txt" => "text/plain; charset=utf-8",
                 _ => "application/octet-stream",
