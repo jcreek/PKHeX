@@ -687,6 +687,11 @@ Topic branches from `web/foundation`, in the order `PKHeX.Web.md` §"Proposed co
   - **Notices and docs.** `THIRD-PARTY-NOTICES.md` has a sprite section: provenance, pokesprite as PKHeX's README credits it (its MIT text reproduced; its README says the images are © Nintendo/Creatures/GAME FREAK and MIT covers the rest), and the rights holders. About credits them when loaded. `PKHeX.Web/README.md` has a Sprites section.
   - **CI.** `web.yml` publishes again with the flag after the trim, inventory, size and upload steps (both publishes share `PKHeX.Web/obj`). It appends a sprite size table to the summary and passes `PKHEX_WEB_PUBLISHED_SPRITES` to E2E. The sprite publish is never uploaded (G-B). `PKHeX.Web.SpriteAtlas/**` is added to the paths. A flagged restore adds no package to the Web restore graph, so the notices checks are unaffected. The azure-parity job now also builds the generator (NETSDK1233 count +1 expected).
     - **First GitHub run (PR #16, run 36909562455):** every step passed except E2E, where 96 of 97 passed. `StaticHostServingTests.DefaultModeServesRawFilesWithoutCachingHeaders` saw `[200]` instead of `[200, 404]`. That was a race from F8's concurrent host, not from sprites: `StaticHost` logged each response after `Close()`, so a client could finish reading the 404 before its entry existed. Entries are now recorded before the response is sent, and a response that then fails to send also logs status 0. The host tests passed 20 runs in a row, and Unit and Perf still pass.
+    - **CI time** (M5's first run: `web` took 17 min, up from 10, and `azure-parity` 10 min, up from 4):
+      - The browser cache was keyed on the test project's hash, so M5's edit to it downloaded all three browsers (about 410 MiB) again. It is now keyed on the Playwright version. The apt install of their system libraries still runs every time, at whatever speed the mirror gives (3½ min here, 14 min in M3's run).
+      - E2E grew by 2:40. The stalled-atlas case now runs only in Chromium, which saves two 20 s waits, so E2E is 95 tests.
+      - The Perf baseline now runs only on pushes to the merge targets, saving about 1:50 per PR.
+      - Not yet explained: the azure-parity `vstest.console` step grew from 1:43 to 5:30, while the new Unit tests take about 3 s locally. Its TRX durations are needed before changing anything.
   - **Tests.**
     - **Unit 360** (up from 273):
       - `PngCodecTests` (26): each filter and colour type from hand-assembled PNGs with hand-worked filter bytes, the Paeth tie-break, split `IDAT`, CRC/16-bit/interlace/unknown critical chunk/wrong length/bad filter/bad palette index rejected, round trip and determinism, every packed source decodes.
@@ -695,11 +700,11 @@ Topic branches from `web/foundation`, in the order `PKHeX.Web.md` §"Proposed co
       - `SpriteSheetTests` (19): hashed-name and layout validation (13 broken manifests), resolution to cells, the Alolan fallback, and a build without sprites making no request or JS call.
       - `SlotSpriteTests` (5, bUnit): no image without sprites; decorative layers with the label and text kept; exact layer classes, including the grouped fade; bad eggs; the list view.
       - `BuildInfoTests` (+7).
-    - **E2E 97** (up from 69):
+    - **E2E 95** (up from 69):
       - `SpriteCatalogBrowserTests`, 3 engines:
         - Across both paths: the manifest, stylesheet and atlas are each fetched once, the atlas before the input was enabled. Two different saves across the party and three boxes show exactly the resolved layers with every image loaded. The list view works, with no horizontal scroll at 375 px. Nothing is requested after boot, and a second fresh visit with only the second save has the same boot requests.
         - Every one of the 1,838 cells, drawn by the browser from the atlas, equals the browser's own decoding of its source.
-        - Each file aborted (×3), or the atlas stalled, falls back to text with no later request; the stalled case starts after the 20 s limit.
+        - Each file aborted (×3) falls back to text with no later request; so does a stalled atlas, after the 20 s limit (Chromium only, since the limit is engine-independent C# and each run waits it out).
         - A default publish shows text and requests nothing under `sprites/`.
       - `SpritePublishAddsOnlyTheAtlasFiles`, and the default allowlist now also requires no `sprites/`. The fixture serves the sprite publish from a second, lazily started host; `.png` is mapped to `image/png`. Every E2E test executed.
     - **RealSave 14** pass (default publish). Trim baseline unchanged (38); `PKHeX.slnx` Release 0 warnings; actionlint clean. Screenshots of the XY G-D save at 1280 and 375 px show the sprites (Vivillon patterns told apart) with no horizontal scroll.

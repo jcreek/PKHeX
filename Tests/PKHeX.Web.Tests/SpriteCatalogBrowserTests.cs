@@ -195,11 +195,14 @@ public sealed class SpriteCatalogBrowserTests(PublishedAppFixture app)
     /// <summary>
     /// A sprite request that never answers must not leave the app on its loading message: after the catalog's time limit it starts with text.
     /// </summary>
-    [TierTheory(TestCategory.E2E)]
-    [MemberData(nameof(Engines))]
-    public async Task AStalledAtlasFallsBackToTextAfterTheTimeLimit(string engine)
+    /// <remarks>
+    /// Chromium only: the time limit is the catalog's own C# code, the same in every engine, and each run waits out the full limit.
+    /// The other engines' fallback is covered by <see cref="AFailedLoadFallsBackToTextWithoutFurtherRequests"/>.
+    /// </remarks>
+    [TierFact(TestCategory.E2E)]
+    public async Task AStalledAtlasFallsBackToTextAfterTheTimeLimit()
     {
-        await using var session = await app.CreateSessionAsync(engine, "", sprites: true);
+        await using var session = await app.CreateSessionAsync("chromium", "", sprites: true);
         // Never fulfilled, continued or aborted: the request stays pending.
         await session.Page.RouteAsync(BootFilePatterns[2], _ => { });
         var started = session.ElapsedMs;
