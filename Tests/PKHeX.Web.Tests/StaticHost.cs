@@ -137,7 +137,14 @@ internal sealed partial class StaticHost : IDisposable
         }
     }
 
-    /// <summary>Answers one request and records it in the log. Never throws: a failed response is aborted and logged with status 0.</summary>
+    /// <summary>
+    /// Answers one request and records it in the log. Never throws: a failed response is aborted and logged with status 0.
+    /// </summary>
+    /// <remarks>
+    /// Each entry is recorded before the response is sent, because a client can finish reading it before <c>Close</c> returns: recorded
+    /// afterwards, a test that reads the log as soon as its request completes could miss the entry. A response that then fails to send is
+    /// followed by a status 0 entry.
+    /// </remarks>
     private async Task RespondAsync(HttpListenerContext context)
     {
         var requestPath = context.Request.Url!.AbsolutePath;
@@ -157,9 +164,9 @@ internal sealed partial class StaticHost : IDisposable
             }
             if (!file.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal) || !File.Exists(file) || method != "GET")
             {
+                Volatile.Read(ref log).Enqueue(new(requestPath, method, 404, null, 0));
                 context.Response.StatusCode = 404;
                 context.Response.Close();
-                Volatile.Read(ref log).Enqueue(new(requestPath, method, 404, null, 0));
                 return;
             }
 
@@ -209,17 +216,17 @@ internal sealed partial class StaticHost : IDisposable
                 }
                 if (MatchesIfNoneMatch(context.Request.Headers["If-None-Match"], entityTag))
                 {
+                    Volatile.Read(ref log).Enqueue(new(requestPath, method, 304, encoding, 0));
                     response.StatusCode = 304;
                     response.Close();
-                    Volatile.Read(ref log).Enqueue(new(requestPath, method, 304, encoding, 0));
                     return;
                 }
             }
 
+            Volatile.Read(ref log).Enqueue(new(requestPath, method, 200, encoding, bytes.Length));
             response.ContentLength64 = bytes.Length;
             await response.OutputStream.WriteAsync(bytes);
             response.Close();
-            Volatile.Read(ref log).Enqueue(new(requestPath, method, 200, encoding, bytes.Length));
         }
         catch
         {
