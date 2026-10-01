@@ -325,9 +325,22 @@ jobs:
               run: |
                   $PSNativeCommandUseErrorActionPreference = $true
                   Remove-Item Env:PKHEX_WEB_TEST_TIERS -ErrorAction Ignore
+                  # Both searches below are timed: in run 36909562455 they took over 5 minutes together, while the tests took 14 s.
+                  $timer = [Diagnostics.Stopwatch]::StartNew()
+                  # vstest.console sits at a fixed place in a Visual Studio install; a vswhere -find '**' glob walks the whole install to find it.
                   $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-                  $vstest = & $vswhere -latest -products * -version '[17.0,18.0)' -find '**\TestPlatform\vstest.console.exe' | Select-Object -First 1
-                  $tests = @(Get-ChildItem -Recurse -File -Filter '*Tests.dll' | Where-Object { $_.FullName -like '*\bin\Release\*' -and $_.FullName -notlike '*\obj\*' } | ForEach-Object FullName)
+                  $vsPath = & $vswhere -latest -products * -version '[17.0,18.0)' -property installationPath | Select-Object -First 1
+                  $vstest = if ($vsPath) { Join-Path $vsPath 'Common7\IDE\Extensions\TestPlatform\vstest.console.exe' } else { $null }
+                  if ($vstest -and -not (Test-Path -LiteralPath $vstest)) {
+                      $vstest = $null
+                  }
+                  Write-Host "Found vstest.console in $([int]$timer.Elapsed.TotalSeconds) s: $vstest"
+                  $timer.Restart()
+                  # Azure's corrected pattern, **\bin\Release\**\*Tests.dll, over the checkout. .git holds no assemblies and, with the full history
+                  # GitVersion needs, many files, so it is skipped.
+                  $tests = @(Get-ChildItem -Directory -Force | Where-Object Name -ne '.git' | Get-ChildItem -Recurse -File -Filter '*Tests.dll' |
+                      Where-Object { $_.FullName -like '*\bin\Release\*' -and $_.FullName -notlike '*\obj\*' } | ForEach-Object FullName)
+                  Write-Host "Found the test assemblies in $([int]$timer.Elapsed.TotalSeconds) s"
                   if (-not $vstest) {
                       Write-Host "::error::No vstest.console.exe in a Visual Studio [17.0,18.0) install; Azure's VsTest task would not find one either."
                       exit 1
