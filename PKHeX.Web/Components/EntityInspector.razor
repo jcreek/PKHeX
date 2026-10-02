@@ -1,10 +1,11 @@
 @* Read-only view of the drafted entity, in fixed sections. Every value is rendered as text, so a hostile nickname or trainer name stays inert. *@
 <div id="inspector" class="inspector">
-    @foreach (var section in sections)
+    @* Not named "section": older Razor compilers read "@section" as the section directive. *@
+    @foreach (var group in sections)
     {
-        <section aria-labelledby="@section.Id">
-            <h3 id="@section.Id">@section.Title</h3>
-            @if (section.Table is { } table)
+        <section aria-labelledby="@group.Id">
+            <h3 id="@group.Id">@group.Title</h3>
+            @if (group.Table is { } table)
             {
                 <table id="@table.Id">
                     <caption>@table.Caption</caption>
@@ -31,7 +32,7 @@
                 </table>
             }
             <dl class="overview">
-                @foreach (var row in section.Rows)
+                @foreach (var row in group.Rows)
                 {
                     <dt>@row.Label</dt>
                     <dd id="@row.Id">@row.Value</dd>
