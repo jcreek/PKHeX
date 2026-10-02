@@ -16,9 +16,10 @@
                 <li class="@(finding.Severity == Severity.Invalid ? "finding-invalid" : "finding-warning")">
                     <span class="finding-icon" aria-hidden="true">@LegalityText.FindingIcon(finding.Severity)</span>
                     <span class="finding-text">@finding.Text</span>
-                    @if (LegalityText.Section(finding.Identifier) is { } section)
+                    @* Not named "section": older Razor compilers read "@section" as the section directive. *@
+                    @if (LegalityText.Section(finding.Identifier) is { } target)
                     {
-                        <a class="finding-link" href="@($"#{section.Id}")" @onclick="() => OnShowSection.InvokeAsync(section.Id)" @onclick:preventDefault>Show in @section.Title</a>
+                        <a class="finding-link" href="@($"#{target.Id}")" @onclick="() => OnShowSection.InvokeAsync(target.Id)" @onclick:preventDefault>Show in @target.Title</a>
                     }
                 </li>
             }
