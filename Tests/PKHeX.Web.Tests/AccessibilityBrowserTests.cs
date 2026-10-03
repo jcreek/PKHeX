@@ -30,6 +30,7 @@ public sealed class AccessibilityBrowserTests(PublishedAppFixture app)
             var pass = $"{width}px {scheme}";
 
             await Accessibility.AssertNoViolationsAsync(page, $"start, {pass}");
+            await AssertControlsUseTokens(page, $"start, {pass}");
 
             await page.Locator("#about-toggle").ClickAsync();
             await page.Locator("#about-diag-prepare").ClickAsync();
@@ -48,14 +49,50 @@ public sealed class AccessibilityBrowserTests(PublishedAppFixture app)
             await Expect(page.Locator("#legality-status")).ToHaveTextAsync("Invalid");
             await Expect(page.Locator("#legality-findings li").First).ToBeVisibleAsync();
             await Accessibility.AssertNoViolationsAsync(page, $"editor with an Invalid result, {pass}");
+            await AssertControlsUseTokens(page, $"editor, {pass}");
 
             await page.Locator("#nickname").FillAsync("Axe");
             await page.Locator("#close-session").ClickAsync();
             await Expect(page.Locator("#exit")).ToBeVisibleAsync();
             await Accessibility.AssertNoViolationsAsync(page, $"exit panel, {pass}");
+            await AssertControlsUseTokens(page, $"exit panel, {pass}");
             await page.Locator("#exit-cancel").ClickAsync();
 
             await session.AssertNoNetworkOrPersistenceAsync();
         }
+    }
+
+    /// <summary>
+    /// Every visible button, select and text field draws its text and background from the stylesheet's colour tokens, not from the browser's
+    /// own control colours. Those differ by engine and platform (WebKit on Linux draws dark buttons as white on light grey, 1.81:1), so only
+    /// token colours have a contrast this app has checked (<see cref="ContrastTokensTests"/>).
+    /// </summary>
+    private static async Task AssertControlsUseTokens(IPage page, string state)
+    {
+        var foreign = await page.EvaluateAsync<string[]>("""
+            () => {
+                const rgb = value => {
+                    const probe = document.createElement('span');
+                    probe.style.color = value;
+                    document.body.append(probe);
+                    const resolved = getComputedStyle(probe).color;
+                    probe.remove();
+                    return resolved;
+                };
+                const root = getComputedStyle(document.documentElement);
+                const tokens = new Set(['--bg', '--fg', '--muted', '--control'].map(t => rgb(root.getPropertyValue(t).trim())));
+                const found = [];
+                const controls = document.querySelectorAll('button, select, input:not([type=checkbox]):not([type=radio]):not([type=file])');
+                for (const control of controls) {
+                    if (control.getClientRects().length === 0) continue;
+                    const style = getComputedStyle(control);
+                    for (const [what, value] of [['color', style.color], ['background', style.backgroundColor]]) {
+                        if (!tokens.has(value)) found.push(`${control.tagName.toLowerCase()}#${control.id || '?'} ${what} ${value}`);
+                    }
+                }
+                return found;
+            }
+            """);
+        Assert.True(foreign.Length == 0, $"Controls drawn in the browser's own colours ({state}): {string.Join(", ", foreign)}");
     }
 }

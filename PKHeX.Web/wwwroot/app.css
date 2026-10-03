@@ -13,6 +13,7 @@
     --valid: #2e7d32;
     --invalid: #c62828;
     --warning: #8f5600;
+    --control: #f2f2f2;
 }
 @media (prefers-color-scheme: dark) {
     :root {
@@ -25,6 +26,7 @@
         --valid: #81c784;
         --invalid: #ef9a9a;
         --warning: #ffcc80;
+        --control: #2b2b2b;
     }
 }
 /* No motion is used, and none may be added that ignores the user's setting. */
@@ -52,6 +54,17 @@ table { border-collapse: collapse; width: 100%; }
 th, td { border: 1px solid var(--border); padding: .5rem; text-align: start; vertical-align: top; }
 label { display: block; margin-block: .7rem .3rem; }
 button, input, select { font: inherit; padding: .6rem; max-width: 100%; box-sizing: border-box; }
+/* Controls are drawn in the token colours, not the browser's own: those differ by engine and platform (WebKit on Linux draws dark-scheme
+   buttons as white on light grey, 1.81:1), so only the tokens have a known contrast. Checkboxes and radios keep their native look. */
+button { color: var(--fg); background-color: var(--control); border: 1px solid var(--border); border-radius: .3rem; }
+select, input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { color: var(--fg); background-color: var(--bg); border: 1px solid var(--border); border-radius: .3rem; }
+input::file-selector-button { color: var(--fg); background-color: var(--control); border: 1px solid var(--border); border-radius: .3rem; }
+input::-webkit-file-upload-button { color: var(--fg); background-color: var(--control); border: 1px solid var(--border); border-radius: .3rem; }
+/* WebKit draws a coloured select at its native height (23px) and ignores min-height, but honours height: 2.75rem is 44px at the default
+   text size and grows with it, so one line of text and the padding always fit. */
+select { height: 2.75rem; }
+/* Disabled controls are exempt from contrast minimums, but still read as unavailable without colour alone: the border turns dashed. */
+button:disabled, select:disabled, input:disabled { color: var(--muted); border-style: dashed; cursor: default; }
 /* Targets: every control is at least 44px tall (WEB-A11Y-003). A checkbox or radio is small itself, so its whole label is the target. */
 button, input, select, input::file-selector-button { min-height: 44px; }
 input[type="checkbox"], input[type="radio"] { min-height: 0; }

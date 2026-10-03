@@ -19,6 +19,9 @@ public sealed partial class ContrastTokensTests
     /// <summary>Tokens used only for non-text marks: borders, the focus ring and the selected slot's outline.</summary>
     private static readonly string[] MarkTokens = ["--border", "--selected"];
 
+    /// <summary>Tokens used for text on a button's --control background.</summary>
+    private static readonly string[] ControlTextTokens = ["--fg", "--muted"];
+
     private static string Stylesheet => File.ReadAllText(Path.Combine(SaveFixtures.RepositoryRoot, "PKHeX.Web", "wwwroot", "app.css"));
 
     [Theory]
@@ -36,6 +39,12 @@ public sealed partial class ContrastTokensTests
         {
             Ratio(tokens[token], background).Should().BeGreaterThanOrEqualTo(3, $"{token} marks a control or state ({(dark ? "dark" : "light")})");
         }
+        // Buttons are drawn on --control: their text, and the muted text of a disabled one, and their border.
+        foreach (var token in ControlTextTokens)
+        {
+            Ratio(tokens[token], tokens["--control"]).Should().BeGreaterThanOrEqualTo(4.5, $"{token} is text on a button ({(dark ? "dark" : "light")})");
+        }
+        Ratio(tokens["--border"], tokens["--control"]).Should().BeGreaterThanOrEqualTo(3, $"--border outlines a button ({(dark ? "dark" : "light")})");
     }
 
     [Fact]

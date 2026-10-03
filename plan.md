@@ -1790,6 +1790,12 @@ Topic branches from `web/foundation`, in the order `PKHeX.Web.md` §"Proposed co
       - At a fractional width between 39.99rem and 40rem (or 74.99rem and 75rem) neither the narrow nor the medium rules apply: the panes are stacked with neither action, which loses nothing.
       - Clicking or tabbing into a slot already set the tab stop; the new focus handler only changes script focus.
     - After the fixes: Unit 1095, E2E 296, all executed; trim baseline unchanged (38); `PKHeX.slnx` Release has 0 warnings.
+  - **CI run on PR #30 (WebKit, Linux):** axe found `color-contrast` on `#about-toggle` in dark mode: WebKit on Linux draws a native button as white on `#c0c0c0` (1.81:1). macOS WebKit, Chromium and Firefox did not show it, so the local runs passed.
+    - **Cause:** buttons, selects and fields kept the browser's own colours, which the tokens and `ContrastTokensTests` never covered, so their contrast depended on the engine and platform.
+    - **Shown first:** a new check in `AccessibilityBrowserTests` (`AssertControlsUseTokens`) requires every visible button, select and text field to draw its text and background in token colours. It failed locally in all three engines before the fix (for example WebKit's light button background is the same `#c0c0c0`), so it does not need Linux to catch this.
+    - **Fixed:** a `--control` token (`#f2f2f2` / `#2b2b2b`) for buttons and the file button, and `--bg` for selects and fields, all with `--fg` text and a `--border` outline; disabled controls use `--muted` text and a dashed border. `ContrastTokensTests` now also checks `--fg` and `--muted` on `--control` (4.5:1) and `--border` on it (3:1). Checkboxes and radios keep their native look.
+    - **Found while fixing:** macOS WebKit draws a select with any colour set at its native 23px and ignores `min-height`, which the 44px target check caught. Selects now have `height: 2.75rem` (44px at the default text size, growing with it); WebKit keeps its arrow (checked in screenshots, light and dark).
+    - Not reproduced on Linux WebKit locally (the Playwright image would not fit in the free disk space); the next CI run is the confirmation.
   - **Recorded, not changed:**
     - A narrow screen remembers its pane through a detour to a wider layout (the choice made on the phone is kept).
     - The exit panel, live regions and validation focus are M18b's; prev/next and the picker M18c's.
