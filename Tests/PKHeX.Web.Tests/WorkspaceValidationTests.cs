@@ -174,4 +174,82 @@ public sealed class WorkspaceValidationTests : IAsyncLifetime
 
         workspace.FindAll("#apply-summary").Should().BeEmpty();
     }
+
+    [Fact]
+    public void PreviousAndNextStayFocusableAndSayWhyTheyCannotStep()
+    {
+        var workspace = Opened();
+        foreach (var id in new[] { "draft-prev", "draft-next" })
+        {
+            var button = workspace.Find($"#{id}");
+            button.HasAttribute("disabled").Should().BeFalse();
+            button.GetAttribute("type").Should().Be("button");
+            button.GetAttribute("aria-disabled").Should().Be("false", "a clean draft can step");
+        }
+        workspace.Find("#draft-steps").GetAttribute("aria-label").Should().Be(WorkspaceLayout.StepsLabel);
+        var draft = state.Draft;
+
+        workspace.Find("#level").Input("51");
+        workspace.Find("#draft-next").GetAttribute("aria-disabled").Should().Be("true");
+        workspace.Find("#draft-next").Click();
+
+        state.Draft.Should().BeSameAs(draft, "unapplied work is never replaced");
+        workspace.Find("#step-summary-title").TextContent.Should().Be(ValidationText.StepTitle);
+        workspace.Find("#step-summary-list a").GetAttribute("href").Should().Be("#apply");
+        Focused().Should().EndWith("step-summary");
+
+        workspace.Find("#step-summary-list a").Click();
+        Focused().Should().EndWith("apply");
+
+        workspace.Find("#cancel-draft").Click();
+        workspace.FindAll("#step-summary").Should().BeEmpty("a new draft drops the summary");
+    }
+
+    [Fact]
+    public void ARefusedFieldIsAStepReasonLinkingToTheField()
+    {
+        var workspace = Opened();
+        workspace.Find("#level").Input("101");
+
+        workspace.Find("#draft-prev").Click();
+
+        workspace.Find("#step-summary-list a").GetAttribute("href").Should().Be("#level");
+        state.Draft!.Slot.Should().Be(SaveFixtures.FirstBoxSlot);
+    }
+
+    [Fact]
+    public void StepOpensTheNextPokemonAndKeepsFocusOnTheButton()
+    {
+        var workspace = context.Render<Workspace>();
+        state.Open(SaveFixtures.Open(SaveFixtures.Synthetic(true, customize: SaveFixtures.All(
+            SaveFixtures.WithPartyMember(), SaveFixtures.WithBoxEntity(3, 4, _ => { })))));
+        state.OpenSlot(SlotRef.InParty(0));
+        workspace.Render();
+        var before = browser.Invocations.Count(i => i.Identifier == "focusIfNarrow");
+
+        workspace.Find("#draft-next").Click();
+        state.Draft!.Slot.Should().Be(SaveFixtures.FirstBoxSlot);
+        workspace.Find("#draft-slot").TextContent.Should().Be(SlotText.Position(SaveFixtures.FirstBoxSlot));
+        workspace.Find("#message").TextContent.Should().StartWith($"Opened {SlotText.Position(SaveFixtures.FirstBoxSlot)}: ");
+
+        workspace.Find("#draft-next").Click();
+        state.Draft!.Slot.Should().Be(SlotRef.InBox(3, 4));
+        state.CurrentBox.Should().Be(3);
+        workspace.Find("#box-select").GetAttribute("value").Should().Be("3", "the storage browser follows into the box");
+        workspace.Find("#box-grid-4").GetAttribute("tabindex").Should().Be("0", "the stepped-to slot is the grid's tab stop");
+
+        workspace.Find("#draft-next").Click();
+        state.Draft!.Slot.Should().Be(SlotRef.InParty(0), "the last Pokémon wraps to the first");
+        browser.Invocations.Count(i => i.Identifier == "focusIfNarrow").Should().Be(before, "focus stays on the button, not the heading");
+        state.View.Pane.Should().Be(WorkspacePane.Editor);
+    }
+
+    [Fact]
+    public void StepWithNoOtherPokemonSaysSo()
+    {
+        var workspace = Opened();
+        workspace.Find("#draft-prev").Click();
+        workspace.Find("#message").TextContent.Should().Be("No other Pokémon in this save can be opened.");
+        state.Draft!.Slot.Should().Be(SaveFixtures.FirstBoxSlot);
+    }
 }
