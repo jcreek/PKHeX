@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Playwright;
 using PKHeX.Core;
 using PKHeX.Web.Components;
 using PKHeX.Web.State;
@@ -19,6 +20,20 @@ public sealed class PickerBrowserTests(PublishedAppFixture app)
     private static readonly SlotRef Boxed = SlotRef.InBox(0, 1);
 
     private static string Id(int value) => value.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Whether <paramref name="condition"/>, a script returning a boolean, becomes true within Playwright's default timeout.</summary>
+    private static async Task<bool> LaidOutAsync(IPage page, string condition)
+    {
+        try
+        {
+            await page.WaitForFunctionAsync(condition);
+            return true;
+        }
+        catch (TimeoutException)
+        {
+            return false;
+        }
+    }
 
     [TierTheory(TestCategory.E2E)]
     [MemberData(nameof(PublishedAppFixture.BrowserCases), MemberType = typeof(PublishedAppFixture))]
@@ -73,11 +88,17 @@ public sealed class PickerBrowserTests(PublishedAppFixture app)
         AssertOnlyRangeDiffers(bytes, output, native.GetBoxSlotOffset(0, 1), native.SIZE_BOXSLOT);
 
         // On a phone the search sits above its box, and neither scrolls the page sideways.
+        // Firefox can resolve the resize before the page is laid out at the new width, so both checks wait for it rather than measuring once.
         await page.SetViewportSizeAsync(320, 800);
+        await page.WaitForFunctionAsync("() => window.innerWidth === 320");
         Assert.True(await page.EvaluateAsync<bool>("() => document.documentElement.scrollWidth <= document.documentElement.clientWidth"), "The editor scrolls horizontally at 320 px.");
-        var search = await page.Locator("#move-0-search").BoundingBoxAsync();
-        var box = await page.Locator("#move-0").BoundingBoxAsync();
-        Assert.True(search is { Height: >= 44 } && box is not null && search.Y + search.Height <= box.Y, "The move search is not a 44px field above its box at 320 px.");
+        Assert.True(await LaidOutAsync(page, """
+            () => {
+                const search = document.getElementById('move-0-search')?.getBoundingClientRect();
+                const box = document.getElementById('move-0')?.getBoundingClientRect();
+                return !!search && !!box && search.height >= 44 && search.bottom <= box.top;
+            }
+            """), "The move search is not a 44px field above its box at 320 px.");
         await session.AssertNoNetworkOrPersistenceAsync();
         Assert.True(session.PageErrors == 0, "Browser runtime errors occurred.");
     }
