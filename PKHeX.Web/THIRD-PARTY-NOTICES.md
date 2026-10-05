@@ -2,7 +2,7 @@
 
 PKHeX, including PKHeX.Web and PKHeX.Core, is distributed under the GNU General Public License version 3: see `LICENSE.txt` next to this file in a published site, or `LICENSE` in the source repository.
 
-The build label at the bottom of the page shows the git commit the site was built from. The source for published releases is at https://github.com/kwsch/PKHeX; build instructions are in `PKHeX.Web/README.md` there. A local build can include uncommitted changes that the commit does not reflect, and a build made without git history shows `unknown`.
+The build label at the bottom of the page shows the git commit the site was built from. The About panel names the repository holding that commit, which is https://github.com/jcreek/PKHeX for this project's own releases: an unofficial fork of PKHeX (https://github.com/kwsch/PKHeX) by kwsch and the PKHeX contributors; build instructions are in `PKHeX.Web/README.md` there. A local build can include uncommitted changes that the commit does not reflect, and a build made without git history shows `unknown`.
 
 A published site delivers the components below to the browser. Each package keeps its own license and notices. The upstream `THIRD-PARTY-NOTICES` files are published unchanged under `licenses/`; the table names the one that covers each package.
 

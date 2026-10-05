@@ -1,0 +1,20 @@
+name: "PKHeX Web: feature request"
+description: Suggest something PKHeX Web should do, such as support for another game or an editor field.
+labels: [enhancement, web]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              PKHeX Web is an unofficial fork of PKHeX. Features of the desktop editor or of PKHeX.Core belong at [kwsch/PKHeX](https://github.com/kwsch/PKHeX/issues).
+    - type: textarea
+      id: problem
+      attributes:
+          label: What you want to do
+          description: The task you are trying to do, and what gets in the way today.
+      validations:
+          required: true
+    - type: textarea
+      id: solution
+      attributes:
+          label: What would help
+          description: How you would like PKHeX Web to support it. Mention how the desktop editor handles it, if it does.

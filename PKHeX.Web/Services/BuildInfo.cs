@@ -21,6 +21,9 @@ public static class BuildInfo
     /// <summary>Metadata key for the source commit.</summary>
     internal const string CommitKey = "PKHeXSourceCommit";
 
+    /// <summary>Metadata key for the repository the source commit is published in.</summary>
+    internal const string RepositoryKey = "PKHeXSourceRepository";
+
     /// <summary>Metadata key recording whether the sprite atlas was published with this build.</summary>
     internal const string SpritesKey = "PKHeXWebSprites";
 
@@ -31,6 +34,9 @@ public static class BuildInfo
 
     /// <summary>Full git commit of the source tree this build was made from, or <see cref="Unknown"/>.</summary>
     public static string SourceCommit { get; } = Read(Metadata, CommitKey);
+
+    /// <summary>Repository that <see cref="SourceCommit"/> is published in (the corresponding source of this build), or <see cref="Unknown"/>.</summary>
+    public static string SourceRepository { get; } = Read(Metadata, RepositoryKey);
 
     /// <summary>
     /// Version of the PKHeX.Core assembly that is running (major.minor.build), as shown next to legality results; <see cref="Unknown"/> if

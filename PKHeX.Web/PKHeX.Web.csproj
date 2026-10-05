@@ -125,6 +125,8 @@
     It is the checked-out commit: uncommitted local changes are not reflected.
     SourceRevisionId is not used: the shared Directory.Build.props sets it to a build timestamp for the desktop builds.
     Builds without a .git directory can pass -p:PKHeXSourceCommit=<sha>; otherwise the commit is recorded as "unknown".
+    The source repository is where that commit is published, shown in the About panel. Builds published from another repository pass
+    -p:PKHeXSourceRepository=<url>.
   -->
   <Target Name="AddBuildProvenance" BeforeTargets="GetAssemblyAttributes" DependsOnTargets="InitializeSourceControlInformation">
     <PropertyGroup>
@@ -136,10 +138,12 @@
     <PropertyGroup>
       <PKHeXSourceCommit Condition="'$(PKHeXSourceCommit)' == ''">@(_PKHeXRepositoryRoot->'%(RevisionId)')</PKHeXSourceCommit>
       <PKHeXSourceCommit Condition="'$(PKHeXSourceCommit)' == ''">unknown</PKHeXSourceCommit>
+      <PKHeXSourceRepository Condition="'$(PKHeXSourceRepository)' == ''">https://github.com/jcreek/PKHeX</PKHeXSourceRepository>
     </PropertyGroup>
     <ItemGroup>
       <AssemblyMetadata Include="PKHeXWebVersion" Value="$(Version)" />
       <AssemblyMetadata Include="PKHeXSourceCommit" Value="$(PKHeXSourceCommit)" />
+      <AssemblyMetadata Include="PKHeXSourceRepository" Value="$(PKHeXSourceRepository)" />
     </ItemGroup>
   </Target>
 
