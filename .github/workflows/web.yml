@@ -27,7 +27,7 @@ on:
     push:
         branches:
             - master
-            - web/main
+            - main
         paths: *web-paths
 
 permissions:
