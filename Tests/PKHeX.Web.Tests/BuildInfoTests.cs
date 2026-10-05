@@ -25,6 +25,15 @@ public sealed class BuildInfoTests
     }
 
     [Fact]
+    public void SourceRepositoryIsAnAbsoluteHttpsUrl()
+    {
+        // The default names this fork, which publishes the commit above; a build published elsewhere passes -p:PKHeXSourceRepository.
+        // About links to it, so anything but an absolute https URL would be a broken or relative link.
+        Assert.True(Uri.TryCreate(BuildInfo.SourceRepository, UriKind.Absolute, out var uri), $"'{BuildInfo.SourceRepository}' is not an absolute URL.");
+        Assert.Equal(Uri.UriSchemeHttps, uri.Scheme);
+    }
+
+    [Fact]
     public void WebVersionIsTheRepositoryVersion()
     {
         var informational = typeof(BuildInfo).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;

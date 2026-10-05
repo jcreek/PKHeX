@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+    - name: PKHeX desktop editor or PKHeX.Core
+      url: https://github.com/kwsch/PKHeX/issues
+      about: This is an unofficial web fork. Problems that also happen in the PKHeX desktop editor, or in PKHeX.Core itself, belong upstream.

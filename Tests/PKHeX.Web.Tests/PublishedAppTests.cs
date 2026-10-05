@@ -47,8 +47,10 @@ public sealed partial class PublishedAppTests(PublishedAppFixture app)
         await Expect(page.Locator("#about-version")).ToHaveTextAsync(BuildInfo.WebVersion);
         await Expect(page.Locator("#about-commit")).ToHaveTextAsync(BuildInfo.SourceCommit);
         await Expect(page.Locator("#support-matrix tbody tr")).ToHaveCountAsync(SupportMatrix.Families.Count);
-        await Expect(page.Locator("#about-source")).ToHaveAttributeAsync("href", "https://github.com/kwsch/PKHeX");
+        await Expect(page.Locator("#about-source")).ToHaveAttributeAsync("href", BuildInfo.SourceRepository);
         await Expect(page.Locator("#about-source")).ToHaveAttributeAsync("target", "_blank");
+        await Expect(page.Locator("#about-fork")).ToContainTextAsync("unofficial community fork of PKHeX");
+        await Expect(page.Locator("#about-upstream")).ToHaveAttributeAsync("href", "https://github.com/kwsch/PKHeX");
         await AssertLicenseLinksAsync(session);
         await toggle.ClickAsync();
         await Expect(page.Locator("#about")).ToBeHiddenAsync();

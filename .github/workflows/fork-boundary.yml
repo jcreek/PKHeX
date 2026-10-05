@@ -1,0 +1,42 @@
+# Fails a pull request or push that changes a path outside PKHeX.Web/tools/fork-boundary.txt, compared with upstream kwsch/PKHeX master.
+# Upstream's files stay identical apart from the listed carried patches, so upstream syncs stay clean and a merge back stays realistic.
+# It has no path filter, unlike web.yml: a change to any upstream file is exactly what it must see.
+name: fork-boundary
+
+on:
+    pull_request:
+    push:
+        branches:
+            - main
+
+permissions:
+    contents: read
+
+concurrency:
+    group: fork-boundary-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+    run:
+        shell: bash
+
+jobs:
+    fork-boundary:
+        if: ${{ github.repository != 'kwsch/PKHeX' }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            # The merge base with upstream can be far back, so the whole history is fetched.
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+                  fetch-depth: 0
+
+            # Fetched from upstream itself, not this fork's master mirror, so a mirror that has fallen behind cannot hide or invent a difference.
+            - name: Fetch upstream master
+              run: git fetch --no-tags https://github.com/kwsch/PKHeX.git master
+
+            # --no-renames: a moved file is otherwise listed only at its new path, so moving an upstream file into PKHeX.Web would pass.
+            # core.quotePath=false: git would otherwise quote a non-ASCII path, which then matches no pattern.
+            - name: Check the fork boundary
+              run: git -c core.quotePath=false diff --no-renames --name-only FETCH_HEAD...HEAD | PKHeX.Web/tools/fork-boundary.sh

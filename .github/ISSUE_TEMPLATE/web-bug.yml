@@ -1,0 +1,46 @@
+name: "PKHeX Web: bug report"
+description: Something in PKHeX Web crashes, refuses a file or behaves incorrectly.
+labels: [bug, web]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              PKHeX Web is an unofficial fork of PKHeX. If the same thing happens in the PKHeX desktop editor, report it at [kwsch/PKHeX](https://github.com/kwsch/PKHeX/issues) instead.
+              Never attach a save file you are not willing to share publicly.
+    - type: textarea
+      id: what-happened
+      attributes:
+          label: What happened
+          description: What you did, what you expected, and what happened instead.
+      validations:
+          required: true
+    - type: textarea
+      id: steps
+      attributes:
+          label: Steps to reproduce
+          placeholder: |
+              1. Open an Omega Ruby save
+              2. Select the first party slot
+              3. ...
+      validations:
+          required: true
+    - type: input
+      id: game
+      attributes:
+          label: Game
+          description: Which game the save is from, and where it was exported from (console tool or emulator).
+      validations:
+          required: true
+    - type: input
+      id: browser
+      attributes:
+          label: Browser and device
+          placeholder: Firefox 140 on Windows 11
+      validations:
+          required: true
+    - type: textarea
+      id: diagnostics
+      attributes:
+          label: Diagnostic report
+          description: About → "Prepare a diagnostic report" → Copy. It holds no save data, Pokémon or trainer names.
+          render: text

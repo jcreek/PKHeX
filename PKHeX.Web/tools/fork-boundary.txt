@@ -1,0 +1,22 @@
+# The only paths in this fork that may differ from upstream kwsch/PKHeX master. Checked by fork-boundary.sh.
+#
+# One bash pattern per line, matched against the whole repository-relative path; * also matches /. Text after # is a comment.
+# Keeping this list short keeps every upstream sync clean and a merge back into upstream realistic. Fork branding goes in new files
+# (listed below), never in edits to upstream's files.
+
+# Owned by the fork: upstream has none of these.
+PKHeX.Web/*
+PKHeX.Web.SpriteAtlas/*
+Tests/PKHeX.Web.Tests/*
+.github/README.md                          # shown by GitHub instead of upstream's root README.md
+.github/ISSUE_TEMPLATE/config.yml
+.github/ISSUE_TEMPLATE/web-*.yml
+.github/workflows/web.yml
+.github/workflows/fork-boundary.yml
+
+# Carried patches to upstream files. Each names why it is carried and how it goes away; remove the entry once upstream has the change.
+.gitattributes                             # keeps LF endings on the PKHeX.Web/tools shell scripts; needed only with the Web project
+PKHeX.slnx                                 # adds the Web projects to the solution; needed only with the Web project
+PKHeX.Core/Editing/SpeciesFormChange.cs    # kwsch/PKHeX#4889
+Tests/PKHeX.Core.Tests/Editing/SpeciesFormChangeTests.cs    # kwsch/PKHeX#4889
+PKHeX.WinForms/Controls/PKM Editor/PKMEditor.cs             # kwsch/PKHeX#4889
