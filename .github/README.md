@@ -7,6 +7,8 @@ PKHeX Web
 
 PKHeX Web is a static Blazor WebAssembly save editor built on PKHeX.Core, the library behind the PKHeX desktop editor. The save never leaves your device: the files are opened, edited, checked for legality and downloaded entirely in the browser, with no server, upload, analytics or persistent storage.
 
+**Use it at [www.pkhexweb.uk](https://www.pkhexweb.uk).** The site is deployed from `main` once every check passes.
+
 It currently opens raw, decrypted **Pokémon X, Y, Omega Ruby and Alpha Sapphire** saves. For an open save you can:
 
 - browse the party and boxes
